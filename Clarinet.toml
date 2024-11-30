@@ -1,0 +1,23 @@
+[project]
+name = "stacks-music-art-royaltyNFT"
+authors = []
+description = ""
+telemetry = true
+requirements = []
+cache_dir = "/home/runner/stacks-music-art-royaltyNFT/stacks-music-art-royaltyNFT/./.requirements"
+boot_contracts = ["pox", "costs-v2", "bns"]
+[contracts.stacks-music-art-royaltyNFT]
+path = "contracts/stacks-music-art-royaltyNFT.clar"
+
+[repl]
+costs_version = 2
+parser_version = 2
+
+[repl.analysis]
+passes = ["check_checker"]
+
+[repl.analysis.check_checker]
+strict = false
+trusted_sender = false
+trusted_caller = false
+callee_filter = false
