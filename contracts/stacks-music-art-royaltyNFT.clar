@@ -85,3 +85,70 @@
     (ok true)
   )
 )
+
+;; Check if transfer is approved
+(define-private (is-transfer-approved (token-id uint) (sender principal))
+  (match (map-get? token-approvals { token-id: token-id })
+    approval 
+      (or
+        (is-eq (get approved-operator approval) (some sender))
+        (is-eq sender tx-sender)
+      )
+    true  ;; Default to true if no specific approval set
+  )
+)
+
+;; Dynamic sale price calculation (placeholder)
+(define-private (get-sale-price (token-id uint))
+  ;; In a real implementation, this would fetch from an external oracle or marketplace
+  ;; For now, we'll use a base price with some variation
+  (let 
+    ((base-price u1000))
+    (+ base-price (* token-id u10))
+  )
+)
+
+;; Batch minting for multiple NFTs
+(define-public (batch-mint 
+  (metadata-list (list 10 (string-utf8 256)))
+  (royalty-percentages (list 10 uint))
+)
+  (let 
+    ((minted-tokens 
+      (map mint-single-nft 
+        metadata-list 
+        royalty-percentages
+      )
+    ))
+    (ok minted-tokens)
+  )
+)
+
+;; Helper function for batch minting
+(define-private (mint-single-nft 
+  (metadata (string-utf8 256))
+  (royalty-percent uint)
+)
+  (let 
+    ((result (mint-nft metadata royalty-percent)))
+    (unwrap-panic result)
+  )
+)
+
+;; View functions for royalty and token information
+(define-read-only (get-royalty-info (token-id uint))
+  (map-get? royalty-percentage { token-id: token-id })
+)
+
+(define-read-only (get-total-nfts)
+  (var-get token-count)
+)
+
+(define-read-only (get-token-owner (token-id uint))
+  (nft-get-owner? royalty-nft token-id)
+)
+
+;; Retrieve Listing Details
+(define-read-only (get-listing-details (token-id uint))
+  (map-get? market-listings { token-id: token-id })
+)
