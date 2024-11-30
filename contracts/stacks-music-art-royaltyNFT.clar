@@ -152,3 +152,112 @@
 (define-read-only (get-listing-details (token-id uint))
   (map-get? market-listings { token-id: token-id })
 )
+
+
+;; Transfer function with royalty distribution
+(define-public (transfer 
+  (token-id uint)
+  (sender principal)
+  (recipient principal)
+)
+  (let 
+    (
+      ;; Get royalty information
+      (royalty-info 
+        (unwrap! 
+          (map-get? royalty-percentage { token-id: token-id }) 
+          (err u404)
+        )
+      )
+
+      ;; Calculate royalty amount (assuming sale price is passed externally)
+      (sale-price (get-last-sale-price token-id))
+      (royalty-amount 
+        (/ (* sale-price (get percentage royalty-info)) u100)
+      )
+      (creator (get creator royalty-info))
+    )
+
+    ;; Ensure only current owner can transfer
+    (asserts! (is-eq sender (unwrap-panic (nft-get-owner? royalty-nft token-id))) err-owner-only)
+
+    ;; Transfer royalty to creator
+    (and (> royalty-amount u0)
+      (try! (stx-transfer? royalty-amount sender creator))
+    )
+
+    ;; Standard NFT transfer
+    (try! (nft-transfer? royalty-nft token-id sender recipient))
+
+    (ok true)
+  )
+)
+;; Get the last sale price (placeholder - would be implemented with external oracle)
+(define-private (get-last-sale-price (token-id uint))
+  ;; In a real implementation, this would fetch from an oracle or marketplace
+  (default-to u1000 (some u1000))
+)
+
+
+;; Marketplace Listings Storage
+(define-map market-listings 
+  { token-id: uint }
+  { 
+    seller: principal, 
+    price: uint, 
+    is-active: bool 
+  }
+)
+
+
+
+;; ;; ;; Delist NFT
+(define-public (delist-nft (token-id uint))
+  (let 
+    ((listing (unwrap! 
+      (map-get? market-listings { token-id: token-id }) 
+      ERR-NOT-LISTED))
+    )
+    (asserts! 
+      (is-eq tx-sender (get seller listing)) 
+      ERR-OWNER-ONLY
+    )
+
+    (map-set market-listings 
+      { token-id: token-id }
+      { 
+        seller: tx-sender, 
+        price: u0, 
+        is-active: false 
+      }
+    )
+
+    (ok true)
+  )
+)
+
+
+;; List NFT for Sale
+(define-public (list-nft 
+  (token-id uint)
+  (price uint)
+)
+  (begin
+    (asserts! 
+      (is-eq tx-sender (unwrap-panic (nft-get-owner? royalty-nft token-id))) 
+      ERR-OWNER-ONLY
+    )
+    (asserts! (> price u0) ERR-INVALID-PRICE)
+
+    (map-set market-listings 
+      { token-id: token-id }
+      { 
+        seller: tx-sender, 
+        price: price, 
+        is-active: true 
+      }
+    )
+
+    (ok true)
+  )
+)
